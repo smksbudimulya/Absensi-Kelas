@@ -1,33 +1,5 @@
 # Absensi SMKS Budi Mulya — GitHub + Google Sheets
 
-## Struktur
-- `index.html` — frontend GitHub Pages
-- `config.js` — URL backend Apps Script
-- `code.gs` — backend/database Google Apps Script
-
-## Instalasi backend
-1. Buat Google Spreadsheet.
-2. Buka **Extensions → Apps Script**.
-3. Tempel `code.gs`.
-4. Jalankan `setupDatabase()` sekali.
-5. **Deploy → New deployment → Web app**.
-6. Execute as: **Me**.
-7. Who has access: **Anyone**.
-8. Salin URL `/exec`.
-
-## Instalasi frontend
-Buka `config.js`, lalu ganti:
-`TEMPEL_URL_WEB_APP_APPS_SCRIPT_DI_SINI`
-dengan URL `/exec` hasil deployment.
-
-Upload `index.html` dan `config.js` ke repository GitHub. Aktifkan GitHub Pages.
-
-## Login awal
-- Username: `admin`
-- Password: `admin2026`
-
-Segera ubah password admin melalui menu **User & Pengaturan**.
-
 ## Fitur
 - Login berbasis role
 - Dashboard statistik + grafik
