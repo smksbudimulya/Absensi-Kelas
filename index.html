@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0f766e">
+  <title>Absensi SMKS Budi Mulya</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root{
+      --primary:#0f766e;--primary2:#14b8a6;--ink:#17313a;--muted:#6b7f86;
+      --bg:#f4f8f8;--card:#fff;--line:#e2ecec;--soft:#edf8f7;--danger:#e11d48;
+      --shadow:0 16px 45px rgba(16,55,62,.08);--radius:22px;
+    }
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:"DM Sans",sans-serif;color:var(--ink);background:
+      radial-gradient(circle at 0 0,rgba(20,184,166,.11),transparent 30%),var(--bg)}
+    button,input,select{font:inherit}button{cursor:pointer}
+    .hidden{display:none!important}.app{min-height:100vh}
+    .login{min-height:100vh;display:grid;place-items:center;padding:24px;background:
+      radial-gradient(circle at 15% 15%,rgba(45,212,191,.35),transparent 28%),
+      linear-gradient(135deg,#073b3a,#0f766e 55%,#123d45)}
+    .login-card{width:min(430px,100%);background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.4);
+      border-radius:30px;padding:36px;box-shadow:0 30px 90px rgba(0,0,0,.22);animation:rise .65s ease}
+    .brand{text-align:center}.brand img{width:88px;height:88px;object-fit:contain;margin:auto;filter:drop-shadow(0 8px 14px rgba(0,0,0,.12))}
+    .brand h1{font:800 24px "Plus Jakarta Sans";margin:12px 0 4px}.brand p{color:var(--muted);margin:0 0 26px;font-size:13px}
+    .field{margin-bottom:15px}.field label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#577078;margin-bottom:7px}
+    .input-wrap{position:relative}.input-wrap i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#91a5aa}
+    .input-wrap input,.input,.select{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:13px;background:#f9fbfb;outline:none;transition:.2s}
+    .input-wrap input{padding-left:42px}.input:focus,.select:focus,.input-wrap input:focus{border-color:var(--primary2);box-shadow:0 0 0 4px rgba(20,184,166,.12);background:#fff}
+    .btn{border:0;border-radius:13px;padding:11px 15px;font-weight:800;transition:.2s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+    .btn:hover{transform:translateY(-1px)}.btn-primary{background:linear-gradient(135deg,var(--primary),#0d9488);color:#fff;box-shadow:0 10px 25px rgba(15,118,110,.23)}
+    .btn-soft{background:var(--soft);color:var(--primary)}.btn-danger{background:#fff1f2;color:#be123c}.btn-dark{background:#17313a;color:#fff}
+    .login .btn{width:100%;padding:14px;margin-top:7px}.hint{font-size:11px;color:#819399;text-align:center;margin-top:18px}
+    .shell{display:flex;min-height:100vh}.sidebar{width:258px;background:#0d3336;color:#d8eeee;padding:22px 14px;position:fixed;inset:0 auto 0 0;z-index:30;transition:.3s}
+    .side-brand{display:flex;align-items:center;gap:11px;padding:7px 10px 24px}.side-brand img{width:43px;height:43px;object-fit:contain;background:#fff;border-radius:13px;padding:4px}
+    .side-brand strong{font:800 14px "Plus Jakarta Sans";display:block}.side-brand span{font-size:10px;color:#91c9c5}
+    .nav-title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#76aaa6;margin:13px 11px 7px}
+    .nav{display:grid;gap:5px}.nav button{border:0;background:transparent;color:#b8d1d0;padding:12px 12px;border-radius:13px;text-align:left;font-weight:700;font-size:12px;display:flex;gap:11px;align-items:center}
+    .nav button i{width:18px;text-align:center}.nav button:hover,.nav button.active{background:rgba(45,212,191,.13);color:#fff}.nav button.active{box-shadow:inset 3px 0 #2dd4bf}
+    .main{margin-left:258px;width:calc(100% - 258px)}.topbar{height:72px;background:rgba(255,255,255,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);
+      display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:20}
+    .mobile-menu{display:none}.top-title h2{font:800 17px "Plus Jakarta Sans";margin:0}.top-title p{font-size:10px;color:var(--muted);margin:3px 0 0}
+    .user-chip{display:flex;align-items:center;gap:10px}.avatar{width:37px;height:37px;border-radius:50%;background:linear-gradient(135deg,#14b8a6,#0f766e);color:#fff;display:grid;place-items:center;font-weight:800}
+    .user-chip strong{font-size:12px;display:block}.user-chip span{font-size:10px;color:var(--muted)}
+    .content{padding:28px;max-width:1500px;margin:auto}.tab{display:none;animation:fade .35s ease}.tab.active{display:block}
+    .hero{background:linear-gradient(135deg,#0c5554,#0f766e 58%,#17a99a);color:#fff;border-radius:26px;padding:25px 28px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+    .hero:after{content:"";position:absolute;width:220px;height:220px;border:35px solid rgba(255,255,255,.06);border-radius:50%;right:-70px;top:-100px}
+    .hero h1{font:800 24px "Plus Jakarta Sans";margin:0 0 6px}.hero p{margin:0;color:#cceeed;font-size:12px}.hero-date{margin-top:17px;display:inline-flex;background:rgba(255,255,255,.12);padding:8px 12px;border-radius:11px;font-size:11px}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0}.stat{background:var(--card);border:1px solid var(--line);border-radius:19px;padding:18px;display:flex;gap:13px;align-items:center;box-shadow:0 8px 25px rgba(16,55,62,.045)}
+    .stat .ico{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:18px}.green{background:#dcfce7;color:#15803d}.amber{background:#fef3c7;color:#b45309}.blue{background:#dbeafe;color:#1d4ed8}.rose{background:#ffe4e6;color:#be123c}
+    .stat b{font:800 22px "Plus Jakarta Sans";display:block}.stat small{font-size:10px;color:var(--muted)}
+    .grid2{display:grid;grid-template-columns:1fr 1.7fr;gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:21px;box-shadow:0 8px 25px rgba(16,55,62,.045);padding:20px}
+    .card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:15px}.card-head h3{font:800 14px "Plus Jakarta Sans";margin:0}.card-head p{font-size:10px;color:var(--muted);margin:4px 0 0}
+    .quick{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.quick button{border:1px solid var(--line);background:#fbfdfd;border-radius:15px;padding:14px;text-align:left;font-weight:800;color:#31545a;transition:.2s}.quick button:hover{border-color:#9adbd5;transform:translateY(-2px);background:var(--soft)}
+    .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:end}.toolbar .field{min-width:160px;margin:0}.toolbar .grow{flex:1}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:17px;margin-top:15px}.table{width:100%;border-collapse:collapse;font-size:11px;min-width:720px}.table th{background:#f3f8f8;color:#587178;font-size:9px;text-transform:uppercase;letter-spacing:.06em;padding:11px;border-bottom:1px solid var(--line);white-space:nowrap}.table td{padding:10px 11px;border-bottom:1px solid #edf2f2}.table tr:hover td{background:#fbfefe}
+    .status-group{display:flex;gap:4px;justify-content:center}.status-group label input{display:none}.status-group label span{display:block;padding:6px 8px;border-radius:8px;background:#f1f5f5;color:#60777d;font-weight:800;font-size:10px}.status-group input:checked+span.h{background:#16a34a;color:#fff}.status-group input:checked+span.s{background:#f59e0b;color:#fff}.status-group input:checked+span.i{background:#2563eb;color:#fff}.status-group input:checked+span.a{background:#e11d48;color:#fff}
+    .pill{padding:5px 8px;border-radius:99px;font-size:9px;font-weight:800;background:var(--soft);color:var(--primary)}.actions{display:flex;gap:5px;justify-content:center}.icon-btn{width:31px;height:31px;border:0;border-radius:9px;background:#f2f7f7;color:#527078}.icon-btn:hover{background:#e2eeee}
+    .modal{position:fixed;inset:0;background:rgba(7,35,38,.56);backdrop-filter:blur(7px);z-index:100;display:grid;place-items:center;padding:18px}.modal-box{width:min(520px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:24px;padding:23px;box-shadow:0 30px 90px rgba(0,0,0,.24);animation:rise .3s ease}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.modal-head h3{font:800 16px "Plus Jakarta Sans";margin:0}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.full{grid-column:1/-1}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:17px;padding-top:15px;border-top:1px solid var(--line)}
+    .toast-wrap{position:fixed;right:20px;top:85px;z-index:200;display:grid;gap:8px}.toast{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:13px;padding:11px 14px;font-size:11px;font-weight:700;animation:slide .3s ease;min-width:230px}.toast.ok{border-left:4px solid #16a34a}.toast.err{border-left:4px solid var(--danger)}
+    .loading{position:fixed;inset:0;background:rgba(255,255,255,.78);backdrop-filter:blur(4px);z-index:300;display:grid;place-items:center}.loader{background:#fff;padding:22px 28px;border-radius:20px;box-shadow:var(--shadow);text-align:center;font-size:12px;font-weight:800}.spinner{width:28px;height:28px;border:3px solid #d9eeee;border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+    .matrix{overflow:auto}.matrix table{min-width:1050px}.matrix th,.matrix td{padding:5px 6px;text-align:center;border:1px solid #dce8e8;font-size:9px}.matrix th.name,.matrix td.name{text-align:left;min-width:170px}.matrix .h{background:#dcfce7;color:#166534;font-weight:800}.matrix .s{background:#fef3c7;color:#92400e;font-weight:800}.matrix .i{background:#dbeafe;color:#1e40af;font-weight:800}.matrix .a{background:#ffe4e6;color:#9f1239;font-weight:800}
+    .print-head{display:none}.footer-note{text-align:center;color:#8aa0a5;font-size:10px;margin-top:25px}
+    @keyframes spin{to{transform:rotate(360deg)}}@keyframes rise{from{opacity:0;transform:translateY(15px) scale(.98)}to{opacity:1;transform:none}}@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}@keyframes slide{from{opacity:0;transform:translateX(15px)}to{opacity:1;transform:none}}
+    @media(max-width:950px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:none}.main{margin-left:0;width:100%}.mobile-menu{display:inline-flex}.stats{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.content{padding:18px}.topbar{padding:0 16px}}
+    @media(max-width:560px){.login-card{padding:27px 20px}.stats{grid-template-columns:1fr 1fr;gap:9px}.stat{padding:13px}.stat b{font-size:18px}.stat .ico{width:38px;height:38px}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}.hero h1{font-size:20px}.top-title p{display:none}.user-chip>div:not(.avatar){display:none}}
+    @media print{
+      body{background:#fff}.sidebar,.topbar,.no-print,.toast-wrap,.loading{display:none!important}.main{margin:0;width:100%}.content{padding:0;max-width:none}.tab{display:none!important}.tab.print-active{display:block!important}.card{box-shadow:none;border:0;padding:0}.print-head{display:block;text-align:center;margin-bottom:10px}.print-head img{height:65px}.matrix{overflow:visible}.matrix table{min-width:0;width:100%}.footer-note{display:none}@page{size:A4 landscape;margin:8mm}
+    }
+  </style>
+</head>
+<body>
+<div id="loading" class="loading"><div class="loader"><div class="spinner"></div><span id="loading-text">Menghubungkan database...</span></div></div>
+<div id="toast-wrap" class="toast-wrap"></div>
+
+<section id="login-view" class="login hidden">
+  <div class="login-card">
+    <div class="brand"><img id="login-logo" alt="Logo"><h1>SMKS BUDI MULYA</h1><p>Rekapitulasi Absensi Siswa • GitHub + Google Sheets</p></div>
+    <form id="login-form">
+      <div class="field"><label>Username</label><div class="input-wrap"><i class="fa-solid fa-user"></i><input id="login-user" required autocomplete="username" placeholder="Masukkan username"></div></div>
+      <div class="field"><label>Password</label><div class="input-wrap"><i class="fa-solid fa-lock"></i><input id="login-pass" required type="password" autocomplete="current-password" placeholder="Masukkan password"></div></div>
+      <button class="btn btn-primary" type="submit"><i class="fa-solid fa-arrow-right-to-bracket"></i> Masuk ke Sistem</button>
+    </form>
+    <div class="hint">Data tersimpan pada Google Spreadsheet sekolah.</div>
+  </div>
+</section>
+
+<div id="app-view" class="shell hidden">
+  <aside id="sidebar" class="sidebar">
+    <div class="side-brand"><img id="side-logo" alt="Logo"><div><strong>SMKS BUDI MULYA</strong><span>ABSENSI SISWA</span></div></div>
+    <div class="nav-title">Menu Utama</div>
+    <nav class="nav">
+      <button data-tab="dashboard" class="active"><i class="fa-solid fa-chart-pie"></i> Dashboard</button>
+      <button data-tab="input"><i class="fa-solid fa-calendar-check"></i> Input Absensi</button>
+      <button data-tab="rekap"><i class="fa-solid fa-table-list"></i> Rekap Bulanan</button>
+      <button data-tab="siswa"><i class="fa-solid fa-user-graduate"></i> Data Siswa</button>
+    </nav>
+    <div id="admin-nav" class="hidden"><div class="nav-title">Administrator</div><nav class="nav"><button data-tab="users"><i class="fa-solid fa-users-gear"></i> User & Pengaturan</button><button data-tab="backup"><i class="fa-solid fa-database"></i> Backup & Reset</button></nav></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button id="mobile-menu" class="btn btn-soft mobile-menu"><i class="fa-solid fa-bars"></i></button>
+        <div class="top-title"><h2 id="page-title">Dashboard</h2><p>Sistem Rekapitulasi Kehadiran Siswa</p></div>
+      </div>
+      <div class="user-chip"><div><strong id="user-name">-</strong><span id="user-role">-</span></div><div id="avatar" class="avatar">A</div><button id="logout" class="btn btn-danger" title="Keluar"><i class="fa-solid fa-right-from-bracket"></i></button></div>
+    </header>
+
+    <div class="content">
+      <section id="tab-dashboard" class="tab active">
+        <div class="hero"><h1>Selamat datang, <span id="welcome">User</span> 👋</h1><p>Kelola absensi siswa dengan cepat, rapi, dan terhubung langsung ke database sekolah.</p><div class="hero-date"><i class="fa-regular fa-calendar"></i>&nbsp; <span id="today-label"></span></div></div>
+        <div class="stats">
+          <div class="stat"><div class="ico green"><i class="fa-solid fa-check"></i></div><div><b id="st-h">0</b><small>Hadir hari ini</small></div></div>
+          <div class="stat"><div class="ico amber"><i class="fa-solid fa-notes-medical"></i></div><div><b id="st-s">0</b><small>Sakit</small></div></div>
+          <div class="stat"><div class="ico blue"><i class="fa-solid fa-envelope"></i></div><div><b id="st-i">0</b><small>Izin</small></div></div>
+          <div class="stat"><div class="ico rose"><i class="fa-solid fa-user-xmark"></i></div><div><b id="st-a">0</b><small>Alfa</small></div></div>
+        </div>
+        <div class="grid2">
+          <div class="card"><div class="card-head"><div><h3>Komposisi Hari Ini</h3><p>Distribusi status kehadiran</p></div></div><div style="height:260px"><canvas id="pie"></canvas></div></div>
+          <div class="card"><div class="card-head"><div><h3>Akses Cepat</h3><p>Mulai pekerjaan yang sering digunakan</p></div></div><div id="quick" class="quick"></div></div>
+        </div>
+      </section>
+
+      <section id="tab-input" class="tab">
+        <div class="card">
+          <div class="card-head"><div><h3>Input Absensi Harian</h3><p>Pilih kelas dan tanggal. Tanggal menggunakan date picker, tidak perlu mengetik manual.</p></div></div>
+          <div class="toolbar">
+            <div class="field"><label>Kelas</label><select id="input-class" class="select"></select></div>
+            <div class="field"><label>Tanggal</label><input id="input-date" type="date" class="input"></div>
+            <div class="grow"></div>
+            <button id="mark-all" class="btn btn-soft"><i class="fa-solid fa-check-double"></i> Semua Hadir</button>
+            <button id="save-att" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Simpan</button>
+          </div>
+          <div id="att-table" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="tab-rekap" class="tab">
+        <div class="card no-print">
+          <div class="card-head"><div><h3>Rekap Bulanan</h3><p>Gunakan filter kelas dan bulan. Bisa dicetak langsung sebagai laporan.</p></div></div>
+          <div class="toolbar"><div class="field"><label>Kelas</label><select id="rekap-class" class="select"></select></div><div class="field"><label>Bulan</label><input id="rekap-month" type="month" class="input"></div><div class="grow"></div><button id="print-btn" class="btn btn-dark"><i class="fa-solid fa-print"></i> Cetak</button><button id="wa-btn" class="btn btn-soft"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button></div>
+        </div>
+        <div id="print-report" class="card" style="margin-top:16px"><div class="print-head"><img id="print-logo"><h2 style="font:800 16px 'Plus Jakarta Sans';margin:4px 0">SMKS BUDI MULYA</h2><div style="font-size:10px">REKAPITULASI PRESENSI KEHADIRAN SISWA</div><div id="print-period" style="font-size:10px;margin-top:3px"></div></div><div id="matrix" class="matrix"></div><div id="signatures" style="display:flex;justify-content:space-between;margin-top:28px;font-size:10px"></div></div>
+      </section>
+
+      <section id="tab-siswa" class="tab">
+        <div class="card"><div class="card-head"><div><h3>Data Siswa</h3><p>Data disimpan langsung pada Spreadsheet.</p></div><div style="display:flex;gap:7px"><button id="template-btn" class="btn btn-soft"><i class="fa-solid fa-download"></i> Template</button><button id="import-btn" class="btn btn-soft"><i class="fa-solid fa-file-import"></i> Import Excel</button><button id="add-student" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Tambah</button></div></div>
+          <div class="toolbar"><div class="field"><label>Kelas</label><select id="siswa-class" class="select"></select></div><div class="field grow"><label>Pencarian</label><input id="siswa-search" class="input" placeholder="Cari NIS atau nama..."></div></div><div id="student-table" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="tab-users" class="tab">
+        <div class="card"><div class="card-head"><div><h3>Kelola User</h3><p>Tambah, edit, nonaktifkan, dan atur hak akses.</p></div><button id="add-user" class="btn btn-primary"><i class="fa-solid fa-user-plus"></i> Tambah User</button></div><div id="user-table" class="table-wrap"></div></div>
+        <div class="card" style="margin-top:16px"><div class="card-head"><div><h3>Pengaturan Kepala Sekolah</h3><p>Digunakan pada laporan dan WhatsApp.</p></div></div><form id="settings-form" class="form-grid"><div class="field"><label>Nama Kepala Sekolah</label><input id="set-kepsek" class="input" required></div><div class="field"><label>No. WhatsApp</label><input id="set-wa" class="input" placeholder="62812..." required></div><div class="full" style="text-align:right"><button class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Simpan Pengaturan</button></div></form></div>
+      </section>
+
+      <section id="tab-backup" class="tab">
+        <div class="card"><div class="card-head"><div><h3>Backup & Reset</h3><p>Unduh seluruh data sebagai JSON sebelum melakukan reset semester.</p></div></div><div style="display:flex;gap:9px;flex-wrap:wrap"><button id="backup-btn" class="btn btn-soft"><i class="fa-solid fa-download"></i> Backup JSON</button><button id="reset-btn" class="btn btn-danger"><i class="fa-solid fa-trash"></i> Reset Absensi Semester</button></div></div>
+      </section>
+      <div class="footer-note">SMKS Budi Mulya • Absensi Siswa • GitHub Pages + Google Apps Script</div>
+    </div>
+  </main>
+</div>
+
+<div id="modal" class="modal hidden"><div class="modal-box"><div class="modal-head"><h3 id="modal-title">Form</h3><button id="modal-close" class="icon-btn"><i class="fa-solid fa-xmark"></i></button></div><div id="modal-body"></div></div></div>
+
+<script src="config.js"></script>
+<script>
+(() => {
+  const C = APP_CONFIG;
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  let db = {users:[],siswa:[],kelas:[],settings:{},absensi:{}};
+  let me = null, chart = null, editingStudent = null, editingUser = null;
+
+  const dateNow = () => new Date().toISOString().slice(0,10);
+  const monthNow = () => dateNow().slice(0,7);
+  const esc = v => String(v ?? "").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  const toast = (msg,type="ok") => { const d=document.createElement("div");d.className="toast "+type;d.textContent=msg;$("#toast-wrap").appendChild(d);setTimeout(()=>d.remove(),3200); };
+  const loading = (on,msg="Memproses...") => {$("#loading").classList.toggle("hidden",!on);$("#loading-text").textContent=msg};
+
+  async function api(action,payload={}){
+    if(!C.GAS_API_URL || C.GAS_API_URL.includes("TEMPEL_URL")) throw new Error("URL Apps Script belum diisi di config.js");
+    const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),C.REQUEST_TIMEOUT);
+    try{
+      const r=await fetch(C.GAS_API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action,...payload}),signal:controller.signal});
+      const text=await r.text(); let data; try{data=JSON.parse(text)}catch{throw new Error("Backend tidak mengembalikan JSON. Periksa deployment Web App Apps Script.");}
+      if(data.status!=="success") throw new Error(data.message||"Permintaan gagal");
+      return data;
+    }finally{clearTimeout(timer)}
+  }
+  async function bootstrap(){
+    loading(true,"Menghubungkan ke database...");
+    try{
+      const r=await api("bootstrap");
+      db={...db,...r.data};
+      $("#login-view").classList.remove("hidden");
+    }catch(e){$("#login-view").classList.remove("hidden");toast(e.message,"err")}
+    finally{loading(false)}
+  }
+
+  function setup(){
+    $("#login-logo").src=C.LOGO_URL;$("#side-logo").src=C.LOGO_URL;$("#print-logo").src=C.LOGO_URL;
+    $("#today-label").textContent=new Intl.DateTimeFormat("id-ID",{dateStyle:"full"}).format(new Date());
+    $("#input-date").value=dateNow();$("#rekap-month").value=monthNow();
+    $("#login-form").onsubmit=login;$("#logout").onclick=logout;$("#mobile-menu").onclick=()=>$("#sidebar").classList.toggle("open");
+    $$(".nav button").forEach(b=>b.onclick=()=>tab(b.dataset.tab));
+    $("#input-class").onchange=renderAttendance;$("#input-date").onchange=renderAttendance;$("#mark-all").onclick=()=>markAll();$("#save-att").onclick=saveAttendance;
+    $("#rekap-class").onchange=renderMatrix;$("#rekap-month").onchange=renderMatrix;$("#print-btn").onclick=printReport;$("#wa-btn").onclick=sendWA;
+    $("#siswa-class").onchange=renderStudents;$("#siswa-search").oninput=renderStudents;$("#add-student").onclick=()=>studentModal();$("#import-btn").onclick=importExcel;$("#template-btn").onclick=downloadTemplate;
+    $("#add-user").onclick=()=>userModal();$("#settings-form").onsubmit=saveSettings;$("#backup-btn").onclick=backup;$("#reset-btn").onclick=resetSemester;
+    $("#modal-close").onclick=closeModal;$("#modal").onclick=e=>{if(e.target.id==="modal")closeModal()};
+  }
+
+  async function login(e){
+    e.preventDefault(); const username=$("#login-user").value.trim(),password=$("#login-pass").value;
+    loading(true,"Memverifikasi akun...");
+    try{const r=await api("login",{username,password});db={...db,...r.data};me=r.data.user;sessionStorage.setItem("absensi_user",JSON.stringify(me));showApp();toast("Login berhasil. Selamat datang!")}
+    catch(e){toast(e.message,"err")}finally{loading(false)}
+  }
+  function showApp(){
+    $("#login-view").classList.add("hidden");$("#app-view").classList.remove("hidden");
+    $("#user-name").textContent=me.nama_lengkap;$("#user-role").textContent=me.role;$("#avatar").textContent=(me.nama_lengkap||"A").trim().charAt(0).toUpperCase();$("#welcome").textContent=(me.nama_lengkap||"User").split(" ")[0];
+    const admin=["Admin"].includes(me.role);$("#admin-nav").classList.toggle("hidden",!admin);
+    if(me.role==="Wali" && me.kelas_diampu) $("#input-class").dataset.lock=me.kelas_diampu;
+    fillClasses();renderDashboard();renderAttendance();renderStudents();renderMatrix();renderUsers();fillSettings();
+  }
+  function logout(){sessionStorage.removeItem("absensi_user");location.reload()}
+  function tab(name){$$(".tab").forEach(x=>x.classList.remove("active"));$("#tab-"+name).classList.add("active");$$(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.tab===name));$("#page-title").textContent={dashboard:"Dashboard",input:"Input Absensi",rekap:"Rekap Bulanan",siswa:"Data Siswa",users:"User & Pengaturan",backup:"Backup & Reset"}[name]||name;$("#sidebar").classList.remove("open");if(name==="rekap")renderMatrix()}
+
+  function fillClasses(){
+    const allowed=me?.role==="Wali"&&me.kelas_diampu?me.kelas_diampu:null;
+    const classes=db.kelas.filter(k=>!allowed||k.kelas_id===allowed);
+    ["input-class","rekap-class","siswa-class"].forEach(id=>{const s=$("#"+id);s.innerHTML=classes.map(k=>`<option value="${esc(k.kelas_id)}">${esc(k.nama_kelas)}</option>`).join("");if(allowed)s.value=allowed});
+  }
+  function studentsFor(cls){return db.siswa.filter(s=>s.kelas_id===cls)}
+  function dayRecords(date){return db.absensi[date]||{}}
+  function renderDashboard(){
+    const cls=me?.role==="Wali"?me.kelas_diampu:null, rec=dayRecords(dateNow()), list=cls?studentsFor(cls):db.siswa;let c={H:0,S:0,I:0,A:0};
+    list.forEach(s=>{const r=rec[s.nis];if(r&&c[r.status]!=null)c[r.status]++});["h","s","i","a"].forEach(x=>$("#st-"+x).textContent=c[x.toUpperCase()]||0);
+    if(chart)chart.destroy();chart=new Chart($("#pie"),{type:"doughnut",data:{labels:["Hadir","Sakit","Izin","Alfa"],datasets:[{data:[c.H,c.S,c.I,c.A],backgroundColor:["#16a34a","#f59e0b","#2563eb","#e11d48"],borderWidth:3,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,cutout:"70%",plugins:{legend:{position:"bottom",labels:{font:{size:10}}}}}});
+    $("#quick").innerHTML=(db.kelas||[]).filter(k=>!cls||k.kelas_id===cls).map(k=>`<button onclick="document.querySelector('[data-tab=input]').click();setTimeout(()=>{document.querySelector('#input-class').value='${esc(k.kelas_id)}';renderAttendance()},30)"><i class="fa-solid fa-arrow-right" style="color:#0f766e"></i> ${esc(k.nama_kelas)}</button>`).join("")||"<div style='color:#789;font-size:11px'>Belum ada kelas.</div>";
+  }
+
+  function renderAttendance(){
+    const cls=$("#input-class").value;if(!cls)return;const students=studentsFor(cls),rec=dayRecords($("#input-date").value);
+    $("#att-table").innerHTML=`<table class="table"><thead><tr><th>No</th><th>NIS</th><th>Nama Siswa</th><th>Status Kehadiran</th><th>Keterangan</th></tr></thead><tbody>${students.map((s,i)=>{const r=rec[s.nis]||{status:"H",keterangan:""};return `<tr><td>${i+1}</td><td>${esc(s.nis)}</td><td><b>${esc(s.nama_siswa)}</b></td><td><div class="status-group">${["H","S","I","A"].map(x=>`<label><input name="st-${esc(s.nis)}" type="radio" value="${x}" ${r.status===x?"checked":""}><span class="${x.toLowerCase()}">${x==="H"?"✓":x}</span></label>`).join("")}</div></td><td><input class="input" style="padding:7px 9px" id="ket-${esc(s.nis)}" value="${esc(r.keterangan||"")}" placeholder="Opsional"></td></tr>`}).join("")}</tbody></table>`;
+  }
+  function markAll(){ $$("#att-table input[type=radio][value=H]").forEach(x=>x.checked=true);toast("Semua siswa ditandai Hadir.")}
+  async function saveAttendance(){
+    const cls=$("#input-class").value,date=$("#input-date").value, data={};
+    studentsFor(cls).forEach(s=>{const q=$(`input[name="st-${CSS.escape(s.nis)}"]:checked`);data[s.nis]={status:q?q.value:"H",keterangan:$(`#ket-${CSS.escape(s.nis)}`).value||""}});
+    loading(true,"Menyimpan absensi...");
+    try{const r=await api("save_absensi",{tanggal:date,kelas_id:cls,data,updated_by:me.username});db.absensi=r.data.absensi||db.absensi;renderDashboard();renderMatrix();toast("Absensi berhasil disimpan.")}catch(e){toast(e.message,"err")}finally{loading(false)}
+  }
+
+  function renderMatrix(){
+    const cls=$("#rekap-class").value, ym=$("#rekap-month").value;if(!cls||!ym)return;const [y,m]=ym.split("-").map(Number),days=new Date(y,m,0).getDate(),students=studentsFor(cls);
+    $("#print-period").textContent=`Kelas ${cls} • Periode ${new Intl.DateTimeFormat("id-ID",{month:"long",year:"numeric"}).format(new Date(y,m-1,1))}`;
+    let html="<table><thead><tr><th>No</th><th>NIS</th><th class='name'>Nama Siswa</th>";for(let d=1;d<=days;d++)html+=`<th>${d}</th>`;html+="<th>H</th><th>S</th><th>I</th><th>A</th></tr></thead><tbody>";
+    students.forEach((s,i)=>{let cnt={H:0,S:0,I:0,A:0};html+=`<tr><td>${i+1}</td><td>${esc(s.nis)}</td><td class="name"><b>${esc(s.nama_siswa)}</b></td>`;for(let d=1;d<=days;d++){const key=`${ym}-${String(d).padStart(2,"0")}`,r=db.absensi[key]?.[s.nis],st=r?.status||"";if(cnt[st]!=null)cnt[st]++;html+=`<td class="${st.toLowerCase()}">${st==="H"?"✓":st}</td>`}html+=`<td>${cnt.H}</td><td>${cnt.S}</td><td>${cnt.I}</td><td>${cnt.A}</td></tr>`});html+="</tbody></table>";$("#matrix").innerHTML=html;
+    const wali=db.users.find(u=>u.role==="Wali"&&u.kelas_diampu===cls);$("#signatures").innerHTML=`<div>Mengetahui,<br><b>Kepala SMKS Budi Mulya</b><br><br><br><u>${esc(db.settings.nama_kepsek||"( Kepala Sekolah )")}</u></div><div style="text-align:right">Wali Kelas,<br><br><br><br><u>${esc(wali?.nama_lengkap||"( Wali Kelas )")}</u></div>`;
+  }
+  function printReport(){const active=$("#tab-rekap");$$(".tab").forEach(x=>x.classList.remove("print-active"));active.classList.add("print-active");window.print();setTimeout(()=>active.classList.remove("print-active"),500)}
+  function sendWA(){
+    const cls=$("#rekap-class").value,ym=$("#rekap-month").value,wali=db.users.find(u=>u.role==="Wali"&&u.kelas_diampu===cls),phone=wali?.no_whatsapp||db.settings.wa_kepsek;
+    if(!phone)return toast("Nomor WhatsApp belum diatur.","err");
+    const students=studentsFor(cls),[y,m]=ym.split("-").map(Number),days=new Date(y,m,0).getDate(),cnt={H:0,S:0,I:0,A:0};
+    students.forEach(s=>{for(let d=1;d<=days;d++){const r=db.absensi[`${ym}-${String(d).padStart(2,"0")}`]?.[s.nis];if(r&&cnt[r.status]!=null)cnt[r.status]++}});
+    const msg=`*REKAP ABSENSI SMKS BUDI MULYA*%0A%0A*Kelas:* ${cls}%0A*Periode:* ${ym}%0A*Hadir:* ${cnt.H}%0A*Sakit:* ${cnt.S}%0A*Izin:* ${cnt.I}%0A*Alfa:* ${cnt.A}`;
+    window.open(`https://wa.me/${String(phone).replace(/\D/g,"")}?text=${msg}`,"_blank");
+  }
+
+  function renderStudents(){
+    const cls=$("#siswa-class").value,q=$("#siswa-search").value.toLowerCase(),list=studentsFor(cls).filter(s=>(s.nama_siswa+" "+s.nis).toLowerCase().includes(q));
+    $("#student-table").innerHTML=`<table class="table"><thead><tr><th>No</th><th>NIS</th><th>NISN</th><th>Nama</th><th>L/P</th><th>Kelas</th><th>Aksi</th></tr></thead><tbody>${list.map((s,i)=>`<tr><td>${i+1}</td><td>${esc(s.nis)}</td><td>${esc(s.nisn||"-")}</td><td><b>${esc(s.nama_siswa)}</b></td><td>${esc(s.jenis_kelamin)}</td><td><span class="pill">${esc(s.kelas_id)}</span></td><td><div class="actions"><button class="icon-btn" title="Edit" onclick="studentModal('${esc(s.nis)}')"><i class="fa-solid fa-pen"></i></button><button class="icon-btn" title="Hapus" onclick="deleteStudent('${esc(s.nis)}')"><i class="fa-solid fa-trash"></i></button></div></td></tr>`).join("")}</tbody></table>`;
+  }
+  function openModal(title,body){$("#modal-title").textContent=title;$("#modal-body").innerHTML=body;$("#modal").classList.remove("hidden")}
+  function closeModal(){$("#modal").classList.add("hidden");$("#modal-body").innerHTML=""}
+  window.studentModal=(nis=null)=>{
+    editingStudent=nis;const s=nis?db.siswa.find(x=>x.nis===nis):null;
+    openModal(nis?"Edit Data Siswa":"Tambah Siswa",`<form id="student-form" class="form-grid"><div class="field"><label>NIS</label><input id="f-nis" class="input" required value="${esc(s?.nis||"")}" ${nis?"readonly":""}></div><div class="field"><label>NISN</label><input id="f-nisn" class="input" value="${esc(s?.nisn||"")}"></div><div class="field full"><label>Nama Lengkap</label><input id="f-nama" class="input" required value="${esc(s?.nama_siswa||"")}"></div><div class="field"><label>Jenis Kelamin</label><select id="f-jk" class="select"><option value="L" ${s?.jenis_kelamin==="L"?"selected":""}>Laki-laki</option><option value="P" ${s?.jenis_kelamin==="P"?"selected":""}>Perempuan</option></select></div><div class="field"><label>Kelas</label><select id="f-kelas" class="select">${db.kelas.map(k=>`<option value="${esc(k.kelas_id)}" ${s?.kelas_id===k.kelas_id?"selected":""}>${esc(k.nama_kelas)}</option>`).join("")}</select></div><div class="full modal-actions"><button type="button" class="btn btn-soft" onclick="closeModal()">Batal</button><button class="btn btn-primary">Simpan</button></div></form>`);
+    $("#student-form").onsubmit=async e=>{e.preventDefault();loading(true,"Menyimpan siswa...");try{const payload={nis:$("#f-nis").value.trim(),nisn:$("#f-nisn").value.trim(),nama_siswa:$("#f-nama").value.trim(),jenis_kelamin:$("#f-jk").value,kelas_id:$("#f-kelas").value};const r=await api(nis?"update_siswa":"add_siswa",{old_nis:nis,...payload});db.siswa=r.data.siswa;closeModal();renderStudents();fillClasses();toast("Data siswa tersimpan.")}catch(e){toast(e.message,"err")}finally{loading(false)}};
+  };
+  window.deleteStudent=async nis=>{if(!confirm("Hapus siswa ini?"))return;loading(true,"Menghapus...");try{const r=await api("delete_siswa",{nis});db.siswa=r.data.siswa;renderStudents();toast("Siswa dihapus.")}catch(e){toast(e.message,"err")}finally{loading(false)}};
+
+  async function importExcel(){
+    const inp=document.createElement("input");inp.type="file";inp.accept=".xlsx,.xls,.csv";inp.onchange=async()=>{if(!inp.files[0])return;const buf=await inp.files[0].arrayBuffer(),wb=XLSX.read(buf,{type:"array"}),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);const data=rows.map(r=>({nis:String(r.NIS||r.nis||"").trim(),nisn:String(r.NISN||r.nisn||"").trim(),nama_siswa:String(r["Nama Siswa"]||r.nama_siswa||"").trim(),jenis_kelamin:String(r["Jenis Kelamin"]||r.jenis_kelamin||"L").trim(),kelas_id:String(r.Kelas||r.kelas_id||"").trim()})).filter(x=>x.nis&&x.nama_siswa&&x.kelas_id);if(!data.length)return toast("Tidak ada data valid.","err");loading(true,"Mengimport siswa...");try{const r=await api("import_siswa",{rows:data});db.siswa=r.data.siswa;renderStudents();toast(`Berhasil memproses ${data.length} siswa.`)}catch(e){toast(e.message,"err")}finally{loading(false)}};inp.click();
+  }
+  function downloadTemplate(){const ws=XLSX.utils.aoa_to_sheet([["NIS","NISN","Nama Siswa","Jenis Kelamin","Kelas"],["1001","005123401","Contoh Siswa","L","10 RPL 1"]]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Siswa");XLSX.writeFile(wb,"Template_Import_Siswa_SMKS_Budi_Mulya.xlsx")}
+
+  function renderUsers(){
+    if(me?.role!=="Admin")return;$("#user-table").innerHTML=`<table class="table"><thead><tr><th>No</th><th>Username</th><th>Nama</th><th>Role</th><th>Kelas</th><th>WA</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${db.users.map((u,i)=>`<tr><td>${i+1}</td><td>${esc(u.username)}</td><td><b>${esc(u.nama_lengkap)}</b></td><td><span class="pill">${esc(u.role)}</span></td><td>${esc(u.kelas_diampu||"Semua")}</td><td>${esc(u.no_whatsapp||"-")}</td><td>${u.aktif!==false?"Aktif":"Nonaktif"}</td><td><button class="icon-btn" onclick="userModal('${esc(u.user_id)}')"><i class="fa-solid fa-pen"></i></button></td></tr>`).join("")}</tbody></table>`;
+  }
+  window.userModal=(id=null)=>{
+    editingUser=id;const u=id?db.users.find(x=>x.user_id===id):null;
+    openModal(id?"Edit User":"Tambah User",`<form id="user-form" class="form-grid"><div class="field"><label>Username</label><input id="u-user" class="input" required value="${esc(u?.username||"")}"></div><div class="field"><label>Password ${id?"(kosong = tetap)":"baru"}</label><input id="u-pass" type="password" class="input" ${id?"":"required"}></div><div class="field full"><label>Nama Lengkap</label><input id="u-name" class="input" required value="${esc(u?.nama_lengkap||"")}"></div><div class="field"><label>Role</label><select id="u-role" class="select"><option ${u?.role==="Admin"?"selected":""}>Admin</option><option ${u?.role==="Wali"?"selected":""}>Wali</option><option ${u?.role==="Sekretaris"?"selected":""}>Sekretaris</option></select></div><div class="field"><label>Kelas Diampu</label><input id="u-class" class="input" value="${esc(u?.kelas_diampu||"Semua")}"></div><div class="field"><label>WhatsApp</label><input id="u-wa" class="input" value="${esc(u?.no_whatsapp||"")}"></div><div class="field"><label>Status</label><select id="u-active" class="select"><option value="true" ${u?.aktif!==false?"selected":""}>Aktif</option><option value="false" ${u?.aktif===false?"selected":""}>Nonaktif</option></select></div><div class="full modal-actions"><button type="button" class="btn btn-soft" onclick="closeModal()">Batal</button><button class="btn btn-primary">Simpan</button></div></form>`);
+    $("#user-form").onsubmit=async e=>{e.preventDefault();loading(true,"Menyimpan user...");try{const p={user_id:id,username:$("#u-user").value.trim(),password:$("#u-pass").value,nama_lengkap:$("#u-name").value.trim(),role:$("#u-role").value,kelas_diampu:$("#u-class").value.trim(),no_whatsapp:$("#u-wa").value.trim(),aktif:$("#u-active").value==="true"};const r=await api(id?"update_user":"add_user",p);db.users=r.data.users;closeModal();renderUsers();toast("User tersimpan.")}catch(e){toast(e.message,"err")}finally{loading(false)}};
+  };
+  function fillSettings(){$("#set-kepsek").value=db.settings.nama_kepsek||"";$("#set-wa").value=db.settings.wa_kepsek||""}
+  async function saveSettings(e){e.preventDefault();loading(true,"Menyimpan pengaturan...");try{const r=await api("save_settings",{settings:{nama_kepsek:$("#set-kepsek").value.trim(),wa_kepsek:$("#set-wa").value.trim()}});db.settings=r.data.settings;renderMatrix();toast("Pengaturan tersimpan.")}catch(e){toast(e.message,"err")}finally{loading(false)}}
+  function backup(){const blob=new Blob([JSON.stringify({exported_at:new Date().toISOString(),...db},null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`Backup_Absensi_${dateNow()}.json`;a.click();URL.revokeObjectURL(a.href)}
+  async function resetSemester(){if(!confirm("Hapus seluruh log absensi semester? Data siswa dan user tidak dihapus."))return;if(prompt("Ketik RESET untuk konfirmasi")!=="RESET")return;loading(true,"Mereset absensi...");try{const r=await api("reset_semester");db.absensi={};renderDashboard();renderMatrix();toast("Log absensi berhasil direset.")}catch(e){toast(e.message,"err")}finally{loading(false)}}
+
+  setup();
+  const saved=sessionStorage.getItem("absensi_user");
+  if(saved){try{me=JSON.parse(saved);bootstrap().then(()=>{if(me&&db.users.some(u=>u.user_id===me.user_id&&u.aktif!==false))showApp();else sessionStorage.removeItem("absensi_user")})}catch{bootstrap()}}else bootstrap();
+})();
+</script>
+</body>
+</html>
