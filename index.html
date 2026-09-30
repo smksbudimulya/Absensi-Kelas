@@ -179,6 +179,8 @@
   const $$ = s => [...document.querySelectorAll(s)];
   let db = {users:[],siswa:[],kelas:[],settings:{},absensi:{}};
   let me = null, chart = null, editingStudent = null, editingUser = null;
+  const attendanceLoaded = new Set();
+  const monthLoaded = new Set();
 
   const dateNow = () => new Date().toISOString().slice(0,10);
   const monthNow = () => dateNow().slice(0,7);
@@ -188,22 +190,23 @@
 
   async function api(action,payload={}){
     if(!C.GAS_API_URL || C.GAS_API_URL.includes("TEMPEL_URL")) throw new Error("URL Apps Script belum diisi di config.js");
-    const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),C.REQUEST_TIMEOUT);
+    const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),C.REQUEST_TIMEOUT||20000);
     try{
       const r=await fetch(C.GAS_API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action,...payload}),signal:controller.signal});
-      const text=await r.text(); let data; try{data=JSON.parse(text)}catch{throw new Error("Backend tidak mengembalikan JSON. Periksa deployment Web App Apps Script.");}
+      const text=await r.text(); let data; try{data=JSON.parse(text)}catch{throw new Error("Backend tidak mengembalikan JSON. Periksa deployment Web App Apps Script.")}
       if(data.status!=="success") throw new Error(data.message||"Permintaan gagal");
       return data;
     }finally{clearTimeout(timer)}
   }
+
   async function bootstrap(){
-    loading(true,"Menghubungkan ke database...");
     try{
-      const r=await api("bootstrap");
+      const r=await api("bootstrap",{user_id:me?.user_id||""});
       db={...db,...r.data};
+      if(r.data.user) me=r.data.user;
       $("#login-view").classList.remove("hidden");
-    }catch(e){$("#login-view").classList.remove("hidden");toast(e.message,"err")}
-    finally{loading(false)}
+      return true;
+    }catch(e){$("#login-view").classList.remove("hidden");toast(e.message,"err");return false}
   }
 
   function setup(){
@@ -212,8 +215,8 @@
     $("#input-date").value=dateNow();$("#rekap-month").value=monthNow();
     $("#login-form").onsubmit=login;$("#logout").onclick=logout;$("#mobile-menu").onclick=()=>$("#sidebar").classList.toggle("open");
     $$(".nav button").forEach(b=>b.onclick=()=>tab(b.dataset.tab));
-    $("#input-class").onchange=renderAttendance;$("#input-date").onchange=renderAttendance;$("#mark-all").onclick=()=>markAll();$("#save-att").onclick=saveAttendance;
-    $("#rekap-class").onchange=renderMatrix;$("#rekap-month").onchange=renderMatrix;$("#print-btn").onclick=printReport;$("#wa-btn").onclick=sendWA;
+    $("#input-class").onchange=()=>renderAttendance(true);$("#input-date").onchange=()=>renderAttendance(true);$("#mark-all").onclick=()=>markAll();$("#save-att").onclick=saveAttendance;
+    $("#rekap-class").onchange=()=>renderMatrix(true);$("#rekap-month").onchange=()=>renderMatrix(true);$("#print-btn").onclick=printReport;$("#wa-btn").onclick=sendWA;
     $("#siswa-class").onchange=renderStudents;$("#siswa-search").oninput=renderStudents;$("#add-student").onclick=()=>studentModal();$("#import-btn").onclick=importExcel;$("#template-btn").onclick=downloadTemplate;
     $("#add-user").onclick=()=>userModal();$("#settings-form").onsubmit=saveSettings;$("#backup-btn").onclick=backup;$("#reset-btn").onclick=resetSemester;
     $("#modal-close").onclick=closeModal;$("#modal").onclick=e=>{if(e.target.id==="modal")closeModal()};
@@ -222,56 +225,120 @@
   async function login(e){
     e.preventDefault(); const username=$("#login-user").value.trim(),password=$("#login-pass").value;
     loading(true,"Memverifikasi akun...");
-    try{const r=await api("login",{username,password});db={...db,...r.data};me=r.data.user;sessionStorage.setItem("absensi_user",JSON.stringify(me));showApp();toast("Login berhasil. Selamat datang!")}
-    catch(e){toast(e.message,"err")}finally{loading(false)}
+    try{
+      const r=await api("login",{username,password});
+      db={...db,...r.data};me=r.data.user;sessionStorage.setItem("absensi_user",JSON.stringify(me));
+      showApp();toast("Login berhasil. Selamat datang!");
+    }catch(e){toast(e.message,"err")}finally{loading(false)}
   }
+
   function showApp(){
     $("#login-view").classList.add("hidden");$("#app-view").classList.remove("hidden");
     $("#user-name").textContent=me.nama_lengkap;$("#user-role").textContent=me.role;$("#avatar").textContent=(me.nama_lengkap||"A").trim().charAt(0).toUpperCase();$("#welcome").textContent=(me.nama_lengkap||"User").split(" ")[0];
-    const admin=["Admin"].includes(me.role);$("#admin-nav").classList.toggle("hidden",!admin);
-    if(me.role==="Wali" && me.kelas_diampu) $("#input-class").dataset.lock=me.kelas_diampu;
-    fillClasses();renderDashboard();renderAttendance();renderStudents();renderMatrix();renderUsers();fillSettings();
+    const admin=me.role==="Admin";$("#admin-nav").classList.toggle("hidden",!admin);
+    if(me.role==="Wali"&&me.kelas_diampu)$("#input-class").dataset.lock=me.kelas_diampu;
+    fillClasses();fillSettings();renderStudents();renderDashboard();
   }
+
   function logout(){sessionStorage.removeItem("absensi_user");location.reload()}
-  function tab(name){$$(".tab").forEach(x=>x.classList.remove("active"));$("#tab-"+name).classList.add("active");$$(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.tab===name));$("#page-title").textContent={dashboard:"Dashboard",input:"Input Absensi",rekap:"Rekap Bulanan",siswa:"Data Siswa",users:"User & Pengaturan",backup:"Backup & Reset"}[name]||name;$("#sidebar").classList.remove("open");if(name==="rekap")renderMatrix()}
+
+  function tab(name){
+    $$(".tab").forEach(x=>x.classList.remove("active"));$("#tab-"+name).classList.add("active");
+    $$(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.tab===name));
+    $("#page-title").textContent={dashboard:"Dashboard",input:"Input Absensi",rekap:"Rekap Bulanan",siswa:"Data Siswa",users:"User & Pengaturan",backup:"Backup & Reset"}[name]||name;
+    $("#sidebar").classList.remove("open");
+    if(name==="dashboard")renderDashboard();
+    if(name==="input")renderAttendance();
+    if(name==="rekap")renderMatrix();
+    if(name==="siswa")renderStudents();
+    if(name==="users")renderUsers();
+  }
 
   function fillClasses(){
     const allowed=me?.role==="Wali"&&me.kelas_diampu?me.kelas_diampu:null;
     const classes=db.kelas.filter(k=>!allowed||k.kelas_id===allowed);
-    ["input-class","rekap-class","siswa-class"].forEach(id=>{const s=$("#"+id);s.innerHTML=classes.map(k=>`<option value="${esc(k.kelas_id)}">${esc(k.nama_kelas)}</option>`).join("");if(allowed)s.value=allowed});
+    ["input-class","rekap-class","siswa-class"].forEach(id=>{
+      const s=$("#"+id),old=s.value;
+      s.innerHTML=classes.map(k=>`<option value="${esc(k.kelas_id)}">${esc(k.nama_kelas)}</option>`).join("");
+      if(allowed)s.value=allowed;else if(classes.some(k=>k.kelas_id===old))s.value=old;
+    });
   }
-  function studentsFor(cls){return db.siswa.filter(s=>s.kelas_id===cls)}
+  function studentsFor(cls){return db.siswa.filter(s=>String(s.kelas_id)===String(cls))}
   function dayRecords(date){return db.absensi[date]||{}}
-  function renderDashboard(){
-    const cls=me?.role==="Wali"?me.kelas_diampu:null, rec=dayRecords(dateNow()), list=cls?studentsFor(cls):db.siswa;let c={H:0,S:0,I:0,A:0};
-    list.forEach(s=>{const r=rec[s.nis];if(r&&c[r.status]!=null)c[r.status]++});["h","s","i","a"].forEach(x=>$("#st-"+x).textContent=c[x.toUpperCase()]||0);
-    if(chart)chart.destroy();chart=new Chart($("#pie"),{type:"doughnut",data:{labels:["Hadir","Sakit","Izin","Alfa"],datasets:[{data:[c.H,c.S,c.I,c.A],backgroundColor:["#16a34a","#f59e0b","#2563eb","#e11d48"],borderWidth:3,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,cutout:"70%",plugins:{legend:{position:"bottom",labels:{font:{size:10}}}}}});
-    $("#quick").innerHTML=(db.kelas||[]).filter(k=>!cls||k.kelas_id===cls).map(k=>`<button onclick="document.querySelector('[data-tab=input]').click();setTimeout(()=>{document.querySelector('#input-class').value='${esc(k.kelas_id)}';renderAttendance()},30)"><i class="fa-solid fa-arrow-right" style="color:#0f766e"></i> ${esc(k.nama_kelas)}</button>`).join("")||"<div style='color:#789;font-size:11px'>Belum ada kelas.</div>";
+
+  async function ensureDayLoaded(date,cls,showLoader=false){
+    const key=`${date}|${cls}`;
+    if(attendanceLoaded.has(key))return dayRecords(date);
+    if(showLoader)loading(true,"Memuat absensi...");
+    try{
+      const r=await api("get_absensi_tanggal",{tanggal:date,kelas_id:cls});
+      db.absensi[date]=r.data.absensi||{};attendanceLoaded.add(key);return db.absensi[date];
+    }finally{if(showLoader)loading(false)}
   }
 
-  function renderAttendance(){
-    const cls=$("#input-class").value;if(!cls)return;const students=studentsFor(cls),rec=dayRecords($("#input-date").value);
+  async function ensureMonthLoaded(ym,cls,showLoader=false){
+    const key=`${ym}|${cls}`;
+    if(monthLoaded.has(key))return;
+    if(showLoader)loading(true,"Memuat rekap bulanan...");
+    try{
+      const r=await api("get_absensi_bulan",{bulan:ym,kelas_id:cls});
+      Object.keys(r.data.absensi||{}).forEach(date=>{db.absensi[date]=r.data.absensi[date]});
+      monthLoaded.add(key);
+    }finally{if(showLoader)loading(false)}
+  }
+
+  async function renderDashboard(){
+    const cls=me?.role==="Wali"?me.kelas_diampu:"";
+    const list=cls?studentsFor(cls):db.siswa;
+    let c={H:0,S:0,I:0,A:0};
+    try{
+      const r=await api("get_dashboard",{tanggal:dateNow(),kelas_id:cls});
+      c=r.data.stats||c;
+      db.absensi[dateNow()]=db.absensi[dateNow()]||{};
+    }catch(e){toast(e.message,"err")}
+    ["h","s","i","a"].forEach(x=>$("#st-"+x).textContent=c[x.toUpperCase()]||0);
+    if(chart)chart.destroy();
+    chart=new Chart($("#pie"),{type:"doughnut",data:{labels:["Hadir","Sakit","Izin","Alfa"],datasets:[{data:[c.H,c.S,c.I,c.A],backgroundColor:["#16a34a","#f59e0b","#2563eb","#e11d48"],borderWidth:3,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,cutout:"70%",plugins:{legend:{position:"bottom",labels:{font:{size:10}}}}}});
+    $("#quick").innerHTML=(db.kelas||[]).filter(k=>!cls||k.kelas_id===cls).map(k=>`<button data-quick-class="${esc(k.kelas_id)}"><i class="fa-solid fa-arrow-right" style="color:#0f766e"></i> ${esc(k.nama_kelas)}</button>`).join("")||"<div style='color:#789;font-size:11px'>Belum ada kelas.</div>";
+    $$("[data-quick-class]").forEach(b=>b.onclick=()=>{tab("input");$("#input-class").value=b.dataset.quickClass;renderAttendance(true)});
+  }
+
+  async function renderAttendance(force=false){
+    const cls=$("#input-class").value,date=$("#input-date").value;if(!cls||!date)return;
+    try{await ensureDayLoaded(date,cls,true)}catch(e){toast(e.message,"err");return}
+    const students=studentsFor(cls),rec=dayRecords(date);
     $("#att-table").innerHTML=`<table class="table"><thead><tr><th>No</th><th>NIS</th><th>Nama Siswa</th><th>Status Kehadiran</th><th>Keterangan</th></tr></thead><tbody>${students.map((s,i)=>{const r=rec[s.nis]||{status:"H",keterangan:""};return `<tr><td>${i+1}</td><td>${esc(s.nis)}</td><td><b>${esc(s.nama_siswa)}</b></td><td><div class="status-group">${["H","S","I","A"].map(x=>`<label><input name="st-${esc(s.nis)}" type="radio" value="${x}" ${r.status===x?"checked":""}><span class="${x.toLowerCase()}">${x==="H"?"✓":x}</span></label>`).join("")}</div></td><td><input class="input" style="padding:7px 9px" id="ket-${esc(s.nis)}" value="${esc(r.keterangan||"")}" placeholder="Opsional"></td></tr>`}).join("")}</tbody></table>`;
   }
-  function markAll(){ $$("#att-table input[type=radio][value=H]").forEach(x=>x.checked=true);toast("Semua siswa ditandai Hadir.")}
+
+  function markAll(){$$("#att-table input[type=radio][value=H]").forEach(x=>x.checked=true);toast("Semua siswa ditandai Hadir.")}
+
   async function saveAttendance(){
-    const cls=$("#input-class").value,date=$("#input-date").value, data={};
+    const cls=$("#input-class").value,date=$("#input-date").value,data={};
     studentsFor(cls).forEach(s=>{const q=$(`input[name="st-${CSS.escape(s.nis)}"]:checked`);data[s.nis]={status:q?q.value:"H",keterangan:$(`#ket-${CSS.escape(s.nis)}`).value||""}});
     loading(true,"Menyimpan absensi...");
-    try{const r=await api("save_absensi",{tanggal:date,kelas_id:cls,data,updated_by:me.username});db.absensi=r.data.absensi||db.absensi;renderDashboard();renderMatrix();toast("Absensi berhasil disimpan.")}catch(e){toast(e.message,"err")}finally{loading(false)}
+    try{
+      const r=await api("save_absensi",{tanggal:date,kelas_id:cls,data,updated_by:me.username});
+      db.absensi[date]=r.data.absensi||{};attendanceLoaded.add(`${date}|${cls}`);monthLoaded.delete(`${date.slice(0,7)}|${cls}`);
+      renderAttendance();renderDashboard();toast("Absensi berhasil disimpan.");
+    }catch(e){toast(e.message,"err")}finally{loading(false)}
   }
 
-  function renderMatrix(){
-    const cls=$("#rekap-class").value, ym=$("#rekap-month").value;if(!cls||!ym)return;const [y,m]=ym.split("-").map(Number),days=new Date(y,m,0).getDate(),students=studentsFor(cls);
+  async function renderMatrix(force=false){
+    const cls=$("#rekap-class").value,ym=$("#rekap-month").value;if(!cls||!ym)return;
+    try{await ensureMonthLoaded(ym,cls,true)}catch(e){toast(e.message,"err");return}
+    const [y,m]=ym.split("-").map(Number),days=new Date(y,m,0).getDate(),students=studentsFor(cls);
     $("#print-period").textContent=`Kelas ${cls} • Periode ${new Intl.DateTimeFormat("id-ID",{month:"long",year:"numeric"}).format(new Date(y,m-1,1))}`;
     let html="<table><thead><tr><th>No</th><th>NIS</th><th class='name'>Nama Siswa</th>";for(let d=1;d<=days;d++)html+=`<th>${d}</th>`;html+="<th>H</th><th>S</th><th>I</th><th>A</th></tr></thead><tbody>";
     students.forEach((s,i)=>{let cnt={H:0,S:0,I:0,A:0};html+=`<tr><td>${i+1}</td><td>${esc(s.nis)}</td><td class="name"><b>${esc(s.nama_siswa)}</b></td>`;for(let d=1;d<=days;d++){const key=`${ym}-${String(d).padStart(2,"0")}`,r=db.absensi[key]?.[s.nis],st=r?.status||"";if(cnt[st]!=null)cnt[st]++;html+=`<td class="${st.toLowerCase()}">${st==="H"?"✓":st}</td>`}html+=`<td>${cnt.H}</td><td>${cnt.S}</td><td>${cnt.I}</td><td>${cnt.A}</td></tr>`});html+="</tbody></table>";$("#matrix").innerHTML=html;
     const wali=db.users.find(u=>u.role==="Wali"&&u.kelas_diampu===cls);$("#signatures").innerHTML=`<div>Mengetahui,<br><b>Kepala SMKS Budi Mulya</b><br><br><br><u>${esc(db.settings.nama_kepsek||"( Kepala Sekolah )")}</u></div><div style="text-align:right">Wali Kelas,<br><br><br><br><u>${esc(wali?.nama_lengkap||"( Wali Kelas )")}</u></div>`;
   }
-  function printReport(){const active=$("#tab-rekap");$$(".tab").forEach(x=>x.classList.remove("print-active"));active.classList.add("print-active");window.print();setTimeout(()=>active.classList.remove("print-active"),500)}
-  function sendWA(){
+
+  function printReport(){const active=$("#tab-rekap");$$(' .tab').forEach(x=>x.classList.remove("print-active"));active.classList.add("print-active");window.print();setTimeout(()=>active.classList.remove("print-active"),500)}
+
+  async function sendWA(){
     const cls=$("#rekap-class").value,ym=$("#rekap-month").value,wali=db.users.find(u=>u.role==="Wali"&&u.kelas_diampu===cls),phone=wali?.no_whatsapp||db.settings.wa_kepsek;
     if(!phone)return toast("Nomor WhatsApp belum diatur.","err");
+    await ensureMonthLoaded(ym,cls,true);
     const students=studentsFor(cls),[y,m]=ym.split("-").map(Number),days=new Date(y,m,0).getDate(),cnt={H:0,S:0,I:0,A:0};
     students.forEach(s=>{for(let d=1;d<=days;d++){const r=db.absensi[`${ym}-${String(d).padStart(2,"0")}`]?.[s.nis];if(r&&cnt[r.status]!=null)cnt[r.status]++}});
     const msg=`*REKAP ABSENSI SMKS BUDI MULYA*%0A%0A*Kelas:* ${cls}%0A*Periode:* ${ym}%0A*Hadir:* ${cnt.H}%0A*Sakit:* ${cnt.S}%0A*Izin:* ${cnt.I}%0A*Alfa:* ${cnt.A}`;
@@ -284,6 +351,8 @@
   }
   function openModal(title,body){$("#modal-title").textContent=title;$("#modal-body").innerHTML=body;$("#modal").classList.remove("hidden")}
   function closeModal(){$("#modal").classList.add("hidden");$("#modal-body").innerHTML=""}
+  window.closeModal=closeModal;
+
   window.studentModal=(nis=null)=>{
     editingStudent=nis;const s=nis?db.siswa.find(x=>x.nis===nis):null;
     openModal(nis?"Edit Data Siswa":"Tambah Siswa",`<form id="student-form" class="form-grid"><div class="field"><label>NIS</label><input id="f-nis" class="input" required value="${esc(s?.nis||"")}" ${nis?"readonly":""}></div><div class="field"><label>NISN</label><input id="f-nisn" class="input" value="${esc(s?.nisn||"")}"></div><div class="field full"><label>Nama Lengkap</label><input id="f-nama" class="input" required value="${esc(s?.nama_siswa||"")}"></div><div class="field"><label>Jenis Kelamin</label><select id="f-jk" class="select"><option value="L" ${s?.jenis_kelamin==="L"?"selected":""}>Laki-laki</option><option value="P" ${s?.jenis_kelamin==="P"?"selected":""}>Perempuan</option></select></div><div class="field"><label>Kelas</label><select id="f-kelas" class="select">${db.kelas.map(k=>`<option value="${esc(k.kelas_id)}" ${s?.kelas_id===k.kelas_id?"selected":""}>${esc(k.nama_kelas)}</option>`).join("")}</select></div><div class="full modal-actions"><button type="button" class="btn btn-soft" onclick="closeModal()">Batal</button><button class="btn btn-primary">Simpan</button></div></form>`);
@@ -305,14 +374,31 @@
     $("#user-form").onsubmit=async e=>{e.preventDefault();loading(true,"Menyimpan user...");try{const p={user_id:id,username:$("#u-user").value.trim(),password:$("#u-pass").value,nama_lengkap:$("#u-name").value.trim(),role:$("#u-role").value,kelas_diampu:$("#u-class").value.trim(),no_whatsapp:$("#u-wa").value.trim(),aktif:$("#u-active").value==="true"};const r=await api(id?"update_user":"add_user",p);db.users=r.data.users;closeModal();renderUsers();toast("User tersimpan.")}catch(e){toast(e.message,"err")}finally{loading(false)}};
   };
   function fillSettings(){$("#set-kepsek").value=db.settings.nama_kepsek||"";$("#set-wa").value=db.settings.wa_kepsek||""}
-  async function saveSettings(e){e.preventDefault();loading(true,"Menyimpan pengaturan...");try{const r=await api("save_settings",{settings:{nama_kepsek:$("#set-kepsek").value.trim(),wa_kepsek:$("#set-wa").value.trim()}});db.settings=r.data.settings;renderMatrix();toast("Pengaturan tersimpan.")}catch(e){toast(e.message,"err")}finally{loading(false)}}
-  function backup(){const blob=new Blob([JSON.stringify({exported_at:new Date().toISOString(),...db},null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`Backup_Absensi_${dateNow()}.json`;a.click();URL.revokeObjectURL(a.href)}
-  async function resetSemester(){if(!confirm("Hapus seluruh log absensi semester? Data siswa dan user tidak dihapus."))return;if(prompt("Ketik RESET untuk konfirmasi")!=="RESET")return;loading(true,"Mereset absensi...");try{const r=await api("reset_semester");db.absensi={};renderDashboard();renderMatrix();toast("Log absensi berhasil direset.")}catch(e){toast(e.message,"err")}finally{loading(false)}}
+  async function saveSettings(e){e.preventDefault();loading(true,"Menyimpan pengaturan...");try{const r=await api("save_settings",{settings:{nama_kepsek:$("#set-kepsek").value.trim(),wa_kepsek:$("#set-wa").value.trim()}});db.settings=r.data.settings;monthLoaded.clear();renderMatrix();toast("Pengaturan tersimpan.")}catch(e){toast(e.message,"err")}finally{loading(false)}}
+
+  async function backup(){
+    if(me?.role!=="Admin")return toast("Hanya Admin yang dapat melakukan backup.","err");
+    loading(true,"Menyiapkan backup lengkap...");
+    try{const r=await api("backup_full");const blob=new Blob([JSON.stringify(r.data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`Backup_Absensi_${dateNow()}.json`;a.click();URL.revokeObjectURL(a.href);toast("Backup lengkap berhasil dibuat.")}catch(e){toast(e.message,"err")}finally{loading(false)}
+  }
+  async function resetSemester(){if(!confirm("Hapus seluruh log absensi semester? Data siswa dan user tidak dihapus."))return;if(prompt("Ketik RESET untuk konfirmasi")!=="RESET")return;loading(true,"Mereset absensi...");try{await api("reset_semester");db.absensi={};attendanceLoaded.clear();monthLoaded.clear();renderDashboard();if($("#tab-rekap").classList.contains("active"))renderMatrix(true);toast("Log absensi semester berhasil direset.")}catch(e){toast(e.message,"err")}finally{loading(false)}}
+
+  window.renderAttendance=renderAttendance;
+  window.renderMatrix=renderMatrix;
+  window.renderDashboard=renderDashboard;
 
   setup();
   const saved=sessionStorage.getItem("absensi_user");
-  if(saved){try{me=JSON.parse(saved);bootstrap().then(()=>{if(me&&db.users.some(u=>u.user_id===me.user_id&&u.aktif!==false))showApp();else sessionStorage.removeItem("absensi_user")})}catch{bootstrap()}}else bootstrap();
+  if(saved){
+    try{
+      me=JSON.parse(saved);
+      bootstrap().then(ok=>{if(ok&&me&&db.users.some(u=>u.user_id===me.user_id&&u.aktif!==false)){showApp()}else{sessionStorage.removeItem("absensi_user");me=null;}});
+    }catch{sessionStorage.removeItem("absensi_user");bootstrap();}
+  }else{
+    $("#login-view").classList.remove("hidden");
+  }
 })();
 </script>
+
 </body>
 </html>
