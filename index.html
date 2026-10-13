@@ -753,12 +753,15 @@
             }
         }
         function queueBackgroundSync(reason = "perubahan data") {
+            // UI dan cache diperbarui dahulu; request server tidak pernah memblokir interaksi.
             persistLocalState();
-            if (!GAS_URL) return;
-            const q = { snapshot: localSnapshot(), reason, queued_at: new Date().toISOString() };
-            try { localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); } catch (_) {}
+            if (!GAS_URL || !/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(GAS_URL)) return;
+            let previous = null;
+            try { previous = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || "null"); } catch (_) {}
+            const q = { snapshot: localSnapshot(), reason, queued_at: new Date().toISOString(), attempts: previous ? (previous.attempts || 0) : 0 };
+            try { localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); } catch (err) { showToast("Antrean sinkronisasi tidak dapat disimpan di browser.", "error"); return; }
             clearTimeout(syncTimer);
-            syncTimer = setTimeout(flushBackgroundSync, 900);
+            syncTimer = setTimeout(flushBackgroundSync, 800);
         }
         async function flushBackgroundSync() {
             if (!GAS_URL || syncBusy) return;
@@ -770,18 +773,21 @@
             if (badge) { badge.textContent = "Menyinkronkan…"; badge.className = "text-[11px] px-2 py-1 rounded-full bg-blue-100 text-blue-800"; }
             try {
                 const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 12000);
-                const res = await fetch(GAS_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: "sync_all", snapshot: queued.snapshot }),
-                    signal: controller.signal
-                });
-                clearTimeout(timeout);
+                const timeout = setTimeout(() => controller.abort(), 15000);
+                let res;
+                try {
+                    res = await fetch(GAS_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ action: "sync_all", snapshot: queued.snapshot }),
+                        signal: controller.signal
+                    });
+                } finally { clearTimeout(timeout); }
                 const data = await res.json();
                 if (data.status !== "success") throw new Error(data.message || "Sinkronisasi gagal");
                 const latest = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || "null");
                 if (latest && latest.queued_at === queued.queued_at) localStorage.removeItem(SYNC_QUEUE_KEY);
+                else if (latest) { clearTimeout(syncTimer); syncTimer = setTimeout(flushBackgroundSync, 250); }
                 if (badge) { badge.textContent = "Sinkron terbaru"; badge.className = "text-[11px] px-2 py-1 rounded-full bg-emerald-100 text-emerald-800"; }
             } catch (err) {
                 console.warn("Sinkronisasi ditunda; data aman di perangkat.", err);
@@ -791,8 +797,13 @@
         async function refreshFromServerAfterLogin(username, password) {
             if (!GAS_URL) return;
             try {
-                const res = await fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: "login", username, password }) });
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 12000);
+                let res;
+                try {
+                    res = await fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ action: "login", username, password }), signal: controller.signal });
+                } finally { clearTimeout(timeout); }
                 const data = await res.json();
                 if (data.status === "success") {
                     dbUsers = data.users || dbUsers; dbSiswa = data.siswa || dbSiswa;
@@ -932,7 +943,10 @@
             if (!currentUser || currentUser.role === "Admin") {
                 classesToInclude = dbKelas.map(k => k.nama_kelas);
             } else {
-                classesToInclude = [currentUser.kelas_diampu];
+                const allowed = String(currentUser.kelas_diampu || "").split(/[,;|]/).map(x => x.trim()).filter(Boolean);
+                classesToInclude = dbKelas.map(k => k.nama_kelas).filter(c => allowed.includes(c));
+                // Jika kelas belum ada di tabel Kelas tetapi tercantum pada akun guru, tetap tampilkan.
+                allowed.forEach(c => { if (!classesToInclude.includes(c)) classesToInclude.push(c); });
             }
 
             const inputSel = document.getElementById("input-select-kelas");
@@ -949,6 +963,7 @@
                     opt.textContent = `Kelas ${c}`;
                     sel.appendChild(opt);
                 });
+                if (currentUser && currentUser.role !== "Admin" && classesToInclude.length) sel.value = classesToInclude[0];
             });
         }
 
@@ -1071,6 +1086,7 @@
 
             const existingLogs = dbAbsensi[tanggal] || {};
 
+            students.sort((a,b) => String(a.nama_siswa || "").localeCompare(String(b.nama_siswa || ""), "id"));
             students.forEach((s, idx) => {
                 const currentStatus = (existingLogs[s.nis] && existingLogs[s.nis].status) ? existingLogs[s.nis].status : 'H';
                 const currentKet = (existingLogs[s.nis] && existingLogs[s.nis].keterangan) ? existingLogs[s.nis].keterangan : '';
@@ -1467,13 +1483,14 @@
 
                 let count = 0;
                 json.forEach(row => {
-                    const nis = String(row["NIS"] || row["nis"] || "");
-                    const nisn = String(row["NISN"] || row["nisn"] || "");
-                    const nama = row["Nama Siswa"] || row["nama_siswa"] || "";
-                    const jk = row["Jenis Kelamin"] || row["jenis_kelamin"] || "L";
-                    const kelas = row["Kelas"] || row["kelas_id"] || "10 RPL 1";
+                    const nis = String(row["NIS"] || row["nis"] || "").trim();
+                    const nisn = String(row["NISN"] || row["nisn"] || "").trim();
+                    const nama = String(row["Nama Siswa"] || row["nama_siswa"] || "").trim();
+                    const jkRaw = String(row["Jenis Kelamin"] || row["jenis_kelamin"] || "L").trim().toUpperCase();
+                    const jk = jkRaw === "P" || jkRaw.startsWith("PEREMPUAN") ? "P" : "L";
+                    const kelas = String(row["Kelas"] || row["kelas_id"] || "").trim();
 
-                    if (nis && nama) {
+                    if (nis && nama && kelas) {
                         const existingIdx = dbSiswa.findIndex(s => s.nis === nis);
                         if (existingIdx !== -1) {
                             dbSiswa[existingIdx] = { nis, nisn, nama_siswa: nama, jenis_kelamin: jk, kelas_id: kelas };
